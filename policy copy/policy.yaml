@@ -1,0 +1,24 @@
+zones:
+  green:
+    - src/**
+  yellow:
+    - config/**
+  red:
+    - .env
+
+rules:
+  - action: read
+    zone: green
+    allow: true
+
+  - action: write
+    zone: green
+    allow: true
+
+  - action: write
+    zone: yellow
+    allow: false
+
+  - action: any
+    zone: red
+    allow: false
