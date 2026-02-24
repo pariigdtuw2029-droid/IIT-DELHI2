@@ -1,21 +1,18 @@
-const fs = require('fs');
-const path = require('path');
-const { policy, evaluatePolicy } = require('../src/policy');
+const express = require("express");
+const bodyParser = require("body-parser");
+const { policy, evaluatePolicy } = require("../src/policy");
 
-// Middleware function
-function armorclawGuard(intent) {
+const app = express();
+app.use(bodyParser.json());
+
+app.post("/evaluate", (req, res) => {
+  const intent = req.body;
+
   const result = evaluatePolicy({ policy, intent });
 
-  // Write audit log
-  const logPath = path.join(__dirname, '../logs/audit.json');
-  let logs = [];
-  if (fs.existsSync(logPath)) {
-    logs = JSON.parse(fs.readFileSync(logPath, 'utf8'));
-  }
-  logs.push({ intent, result, timestamp: new Date().toISOString() });
-  fs.writeFileSync(logPath, JSON.stringify(logs, null, 2));
+  return res.json(result);
+});
 
-  return result;
-}
-
-module.exports = { armorclawGuard };
+app.listen(4000, () => {
+  console.log("ArmorClaw running on port 4000");
+});

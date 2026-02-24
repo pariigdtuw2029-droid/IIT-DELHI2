@@ -12,7 +12,7 @@ export default function Home() {
     setLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:8000/execute",
+        "http://127.0.0.1:8001/execute",
         {
           user_input: input,
         }

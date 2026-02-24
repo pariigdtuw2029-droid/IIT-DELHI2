@@ -1,62 +1,42 @@
 from fastapi import FastAPI
-from supervisor import supervisor
-from worker import check_scope
-from policy_engine import PolicyEngine
-from executor import execute
-import json
-from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 app = FastAPI()
-policy = PolicyEngine()
 
-@app.get("/run")
-def run(dry_run: bool = False, simulate_malicious: bool = False):
+# Allow frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    intent, scope = supervisor("update requests")
+class UserInput(BaseModel):
+    user_input: str
 
-    if simulate_malicious:
-        intent.target = ".env"
-        intent.action = "read"
+@app.get("/")
+def root():
+    return {"status": "backend alive"}
 
-    scope_ok = check_scope(intent.target, scope)
+@app.post("/execute")
+def execute(payload: UserInput):
 
-    allowed, reason = policy.validate(intent)
+    text = payload.user_input.lower()
 
-    log = {
-        "timestamp": str(datetime.now()),
-        "agent": "Patcher",
-        "intent": intent.intent,
-        "action": intent.action,
-        "target": intent.target,
-        "delegated_scope": scope,
-        "policy_result": "ALLOWED" if allowed else "DENIED",
-        "reason": reason,
-        "execution": "SKIPPED" if dry_run else "ATTEMPTED"
-    }
-
-    with open("../logs/audit.json", "a") as f:
-        f.write(json.dumps(log) + "\n")
-
-    if not allowed:
-        return {"BLOCKED": reason}
-
-    if not scope_ok:
-        return {"BLOCKED": "Outside delegated scope"}
-
-    result = execute(intent, dry_run)
-
-    zone = policy.zone(intent.target)
-
-    proof_of_scope = {
-        "delegated_scope": scope,
-        "target": intent.target,
-        "zone": zone,
-        "scope_validation": "PASS" if scope_ok else "FAIL"
-    }
+    # SIMPLE ArmorClaw simulation (for demo)
+    if ".env" in text or "password" in text:
+        return {
+            "reasoning": "Dangerous resource requested",
+            "intent": {"target": payload.user_input},
+            "decision": "DENY",
+            "execution": "Blocked by policy"
+        }
 
     return {
-        "status": "SUCCESS",
-        "execution": result,
-        "affected_files": [intent.target],
-        "proof_of_scope": proof_of_scope
+        "reasoning": "Structured intent created",
+        "intent": {"target": payload.user_input},
+        "decision": "ALLOW",
+        "execution": "Worker executed successfully"
     }
